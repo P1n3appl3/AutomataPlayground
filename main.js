@@ -9,8 +9,7 @@ var step_forward = document.getElementById("step_forward");
 var step_back = document.getElementById("step_back");
 var initial_state = document.getElementById("initial");
 
-initial_state.value = '0010111010';
-// initial_state.value = '00100';
+initial_state.value = '1101001';
 var start_state = parseInt(initial_state.value, 2);
 var state_size = initial_state.value.length;
 var rule = 110;
@@ -18,56 +17,51 @@ var rules = [];
 var rules_div = document.getElementById("rules");
 var rule_input = document.getElementById("rule_num")
 
-var nodeSet = new Set([ start_state ]);
-var edgeMap = new Map();
-var nodes = new vis.DataSet([ {id : start_state} ]);
-var edges = new vis.DataSet([]);
-
-const padding = 5;
-const square_size = 25;
-
-function makeSVG(id){
-    var content = "";
+function makeNode(id, bgcolor = "grey") {
+    return {
+        id : id,
+        image : {
+            selected : renderNode(id, bgcolor, true),
+            unselected : renderNode(id, bgcolor)
+        }
+    };
 }
 
-function render({ctx, id, x, y, state : {selected, hover}, style, label}) {
-    return {
-        drawNode() {
-            let cx = (padding + square_size * state_size) / 2.0;
-            let cy = (padding + square_size) / 2.0;
-            // console.log(selected, hover, label, x, y);
-            if (selected) {
-                ctx.fillStyle = 'black';
-                ctx.beginPath();
-                ctx.ellipse(cx, cy, cx + 30, cy + 30, 0, 0, 2 * Math.PI);
-                ctx.stroke();
-            }
-            ctx.fillStyle = 'pink';
-            ctx.fillRect(0, 0, 2 * padding + square_size * state_size,
-                         2 * padding + square_size);
-            for (var i = 0; i < state_size; ++i) {
-                ctx.strokeRect(padding + square_size * i, padding + 0,
-                               square_size, square_size);
-                if (id & (1 << state_size - 1 - i)) {
-                    ctx.fillStyle = 'white';
-                } else {
-                    ctx.fillStyle = 'black';
-                }
-                ctx.fillRect(padding + square_size * i, padding, square_size,
-                             square_size);
-            }
-        },
-        nodeDimensions : {
-            width : 2 * padding + square_size * state_size,
-            height : 2 * padding + square_size
-        },
-    };
+var nodes = new vis.DataSet([ makeNode(start_state) ]);
+var edges = new vis.DataSet([]);
+var edgeMap = new Map();
+
+function renderNode(id, bgcolor, selected = false) {
+    const padding = 3;
+    const square_size = 25;
+    var w = square_size * state_size + 2 * padding;
+    var h = square_size + 2 * padding;
+    var background = bgcolor;
+    if (selected) {
+        background = "brown";
+    }
+
+    var content =
+        `<rect x="0" y="0" width="${w}" height="${h}" fill="${background}"/>`;
+    for (var i = 0; i < state_size; i++) {
+        var color = "black";
+        if (id & (1 << state_size - 1 - i)) {
+            color = "white"
+        }
+        content +=
+            `<rect x="${padding + square_size * i + 1}" y="${padding + 1}"
+        width="${square_size - 2}" height="${square_size - 2}" fill="${
+                color}"/>`;
+    }
+    var svg = `<svg width="${w}" height="${h}"
+    xmlns="http://www.w3.org/2000/svg">${content}</svg>`;
+    return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
 }
 
 var container = document.getElementById('playground');
 var options = {
-    nodes : {shape : 'custom', ctxRenderer : render, physics: true, mass: 1},
-    edges : {arrows : 'to'}
+    nodes : {shape : 'image', mass : 4},
+    edges : {arrows : 'to', chosen : false}
 };
 var network =
     new vis.Network(container, {nodes : nodes, edges : edges}, options);
@@ -80,10 +74,18 @@ function computeNext(id) {
         var left = !!(id & (1 << i + 1));
         var center = !!(id & (1 << i));
         var right = !!(id & (1 << i - 1));
-        // console.log(i, left, center, right, (left << 2 | center << 1 | right),
-        //             !!((1 << ((left << 2) | (center << 1) | right)) & rule));
         result |= (!!((1 << ((left << 2) | (center << 1) | right)) & rule))
                   << i;
+    }
+    return result;
+}
+
+function computePrevious(id) {
+    var result = [];
+    for (var i = 0; i < 2 ** state_size; i++) {
+        if (computeNext(i) == id) {
+            result.push(i);
+        }
     }
     return result;
 }
@@ -96,9 +98,8 @@ step_forward.onclick = () => {
     var id = sel[0];
     var next = computeNext(id);
     // console.log(id.toString(2), '->', next.toString(2));
-    if (!nodeSet.has(next)) {
-        nodes.add({id : next});
-        nodeSet.add(next);
+    if (!nodes.get(next)) {
+        nodes.add(makeNode(next));
     }
     if (!edgeMap.has(id)) {
         edgeMap.set(id, new Set([ next ]));
@@ -110,12 +111,37 @@ step_forward.onclick = () => {
     network.selectNodes([ next ]);
 };
 
-step_back.onclick = () => { console.log("TODO"); };
+step_back.onclick = () => {
+    var sel = network.getSelectedNodes();
+    if (sel.length == 0) {
+        return;
+    }
+    var id = sel[0];
+    var predecessors = computePrevious(id)
+    if (predecessors.length) {
+        nodes.update(makeNode(id, '#306396'));
+    }
+    else {
+        nodes.update(makeNode(id, 'green'));
+    }
+    predecessors.forEach(prev => {
+        if (!nodes.get(prev)) {
+            nodes.add(makeNode(prev));
+        }
+        if (!edgeMap.has(prev)) {
+            edgeMap.set(prev, new Set([ id ]));
+            edges.add({from : prev, to : id});
+        } else if (!edgeMap.get(prev).has(id)) {
+            edgeMap.get(prev).add(id);
+            edges.add({from : prev, to : id});
+        }
+    });
+    network.unselectAll();
+};
 
 function reset() {
-    nodeSet = new Set([ start_state ]);
     edgeMap = new Map();
-    nodes = new vis.DataSet([ {id : start_state} ]);
+    nodes = new vis.DataSet([ makeNode(start_state) ]);
     edges = new vis.DataSet([]);
     network.setData({nodes : nodes, edges : edges});
     network.selectNodes([ start_state ]);
@@ -162,6 +188,5 @@ for (var i = 0; i < 8; i++) {
     current.appendChild(btn);
     rules_div.appendChild(current);
 }
-console.log(nodes);
 
 update_rule(110);
