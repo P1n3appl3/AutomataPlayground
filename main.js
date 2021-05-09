@@ -1,12 +1,8 @@
-function makediv(classes = "") {
-    var temp = document.createElement("div");
-    temp.className = classes;
-    return temp;
-}
-
 var config = document.getElementById("rules");
 var step_forward = document.getElementById("step_forward");
 var step_back = document.getElementById("step_back");
+var expand_all = document.getElementById("expand_all");
+var help = document.getElementById("help");
 var initial_state = document.getElementById("initial");
 
 initial_state.value = '1101001';
@@ -90,12 +86,7 @@ function computePrevious(id) {
     return result;
 }
 
-step_forward.onclick = () => {
-    var sel = network.getSelectedNodes();
-    if (sel.length == 0) {
-        return;
-    }
-    var id = sel[0];
+function insert_next(id){
     var next = computeNext(id);
     // console.log(id.toString(2), '->', next.toString(2));
     if (!nodes.get(next)) {
@@ -109,14 +100,17 @@ step_forward.onclick = () => {
         edges.add({from : id, to : next});
     }
     network.selectNodes([ next ]);
-};
+}
 
-step_back.onclick = () => {
+step_forward.onclick = () => {
     var sel = network.getSelectedNodes();
     if (sel.length == 0) {
         return;
     }
-    var id = sel[0];
+    insert_next(sel[0]);
+};
+
+function insert_prev(id){
     var predecessors = computePrevious(id)
     if (predecessors.length) {
         nodes.update(makeNode(id, '#306396'));
@@ -137,7 +131,22 @@ step_back.onclick = () => {
         }
     });
     network.unselectAll();
+}
+
+step_back.onclick = () => {
+    var sel = network.getSelectedNodes();
+    if (sel.length == 0) {
+        return;
+    }
+    insert_prev(sel[0]);
 };
+
+expand_all.onclick = () => {
+    nodes.get().forEach(node => {
+        insert_next(node.id);
+        insert_prev(node.id);
+    });
+}
 
 function reset() {
     edgeMap = new Map();
@@ -167,10 +176,16 @@ initial_state.oninput = () => {
     reset();
 };
 
+function makediv(classes) {
+    var temp = document.createElement("div");
+    temp.className = classes;
+    return temp;
+}
+
 for (var i = 0; i < 8; i++) {
     var current = makediv("rule");
     var ruleset = makediv("ruleset");
-    var btn = makediv();
+    var btn = makediv("");
     for (var j = 0; j < 3; j++) {
         var box = makediv("square");
         if ((1 << 2 - j) & i) {
