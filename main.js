@@ -2,7 +2,7 @@ var config = document.getElementById("rules");
 var step_forward = document.getElementById("step_forward");
 var step_back = document.getElementById("step_back");
 var expand_all = document.getElementById("expand_all");
-var help = document.getElementById("help");
+// var help = document.getElementById("help");
 var initial_state = document.getElementById("initial");
 
 initial_state.value = '1101001';
@@ -26,6 +26,7 @@ function makeNode(id, bgcolor = "grey") {
 var nodes = new vis.DataSet([ makeNode(start_state) ]);
 var edges = new vis.DataSet([]);
 var edgeMap = new Map();
+var fullyExpanded = new Set();
 
 function renderNode(id, bgcolor, selected = false) {
     const padding = 3;
@@ -67,9 +68,9 @@ network.selectNodes([ start_state ]);
 function computeNext(id) {
     var result = 0
     for (var i = 0; i < state_size; i++) {
-        var left = !!(id & (1 << i + 1));
+        var left = !!(id & (1 << ((i + 1) % state_size)));
         var center = !!(id & (1 << i));
-        var right = !!(id & (1 << i - 1));
+        var right = !!(id & (1 << ((i + state_size - 1) % state_size)));
         result |= (!!((1 << ((left << 2) | (center << 1) | right)) & rule))
                   << i;
     }
@@ -86,7 +87,30 @@ function computePrevious(id) {
     return result;
 }
 
-function insert_next(id){
+function dfs(id, current, pos, next) {
+    current |= next << pos;
+    // console.log(id.toString(2).padStart(pos + 1, '0'),
+    //             current.toString(2).padStart(pos + 1, '0'), pos, next);
+    if (pos == state_size - 1) {
+        // console.log(current, '->', id);
+        if (computeNext(current) == id) {
+            return [ current ];
+        } else {
+            return [];
+        }
+    }
+    if (pos > 1 &&
+        (!!(id & (1 << pos - 1))) != !!(rule & (1 << (current >> pos - 2)))) {
+        return [];
+    }
+    return dfs(id, current, pos + 1, 0).concat(dfs(id, current, pos + 1, 1));
+}
+
+function computePreviousFast(id) {
+    return dfs(id, 0, 0, 0).concat(dfs(id, 0, 0, 1));
+}
+
+function insert_next(id) {
     var next = computeNext(id);
     // console.log(id.toString(2), '->', next.toString(2));
     if (!nodes.get(next)) {
@@ -110,8 +134,8 @@ step_forward.onclick = () => {
     insert_next(sel[0]);
 };
 
-function insert_prev(id){
-    var predecessors = computePrevious(id)
+function insert_prev(id) {
+    var predecessors = computePreviousFast(id)
     if (predecessors.length) {
         nodes.update(makeNode(id, '#306396'));
     }
@@ -143,13 +167,17 @@ step_back.onclick = () => {
 
 expand_all.onclick = () => {
     nodes.get().forEach(node => {
-        insert_next(node.id);
-        insert_prev(node.id);
+        if (!fullyExpanded.has(node.id)) {
+            insert_next(node.id);
+            insert_prev(node.id);
+        }
+        fullyExpanded.add(node.id);
     });
-}
+};
 
 function reset() {
     edgeMap = new Map();
+    fullyExpanded = new Set();
     nodes = new vis.DataSet([ makeNode(start_state) ]);
     edges = new vis.DataSet([]);
     network.setData({nodes : nodes, edges : edges});
