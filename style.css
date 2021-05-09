@@ -1,0 +1,78 @@
+#playground {
+    position: absolute;
+    width: auto;
+    width: 99%;
+    height: 99%;
+}
+
+#config {
+    position: absolute;
+    background-color: lightgrey;
+    top: 0;
+    right: 0;
+    padding: 10px;
+    z-index = 1;
+}
+
+.rule {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    float: left;
+    padding: 5px;
+}
+
+.ruleset {
+    display: flex;
+    flex-direction: row;
+}
+
+.square, .rule_button {
+    padding: 0 0;
+    border: none;
+    width: 30px;
+    height: 30px;
+    margin-top: 1px;
+    margin-left: 1px;
+    outline: solid black 1px;
+}
+
+.dead {
+    background: black;
+}
+
+.alive {
+    background: white;
+}
+
+.alive.rule_button:hover {
+    background: #ddd;
+}
+
+.dead.rule_button:hover {
+    background: #222;
+}
+
+/* todo: add tooltip */
+
+.tooltip {
+    position: relative;
+    display: inline-block;
+}
+
+.tooltip .tooltiptext {
+    visibility: hidden;
+    width: 120px;
+    background-color: black;
+    color: #fff;
+    text-align: center;
+    padding: 5px 0;
+    border-radius: 6px;
+
+    position: absolute;
+    z-index: 1;
+}
+
+.tooltip:hover .tooltiptext {
+    visibility: visible;
+}

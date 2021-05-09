@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>1D Cellular Automata Playground</title>
+    <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="style.css">
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+</head>
+<body style="background-color:#404040;">
+    <div id="playground">
+    </div>
+    <div id="config">
+        <button id=step_forward>Step Forward</button>
+        <button id=step_back>Step Backwards</button>
+        <label for="rule_num">Rule #</label>
+        <input type="number" id="rule_num" value="0" name="rule_num" min="0" max="255" size="3">
+        <label for="initial">Initial State:</label>
+        <input type="text" id="initial" name="initial" pattern="[10]{1,24}">
+        <button id=reset>?</button>
+        <div id="rules"></div>
+    </div>
+    <script type="text/javascript" src="main.js"></script>
+</body>
+</html>
